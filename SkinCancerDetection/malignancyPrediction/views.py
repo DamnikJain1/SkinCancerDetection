@@ -12,32 +12,129 @@ from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+
+# def index(request):
+#     abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resnet50.json')
+#     h5_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resnet50.h5')
+#     img_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'static/'+request.GET.get('fn'))
+
+#     json_file = open(abs_path, 'r')
+#     loaded_model_json = json_file.read()
+#     json_file.close()
+#     loaded_model = model_from_json(loaded_model_json)
+#     # load weights into new model
+#     loaded_model.load_weights(h5_abs_path)
+#     print("Loaded model from disk")
+#     read = lambda imname: np.asarray(Image.open(imname).convert("RGB"))
+#     ims_benign = [read(img_abs_path)]
+
+#     X_benign = np.array(ims_benign, dtype='uint8')
+#     X_benign=X_benign/255
+
+#     #print(X_benign)
+#     #print(loaded_model.predict_classes(X_benign))
+#     #print(loaded_model.predict_classes(X_malignant))
+#     print(loaded_model.predict(X_benign))
+#     res = loaded_model.predict(X_benign)
+#     res = res[0]
+#     http_response = {}
+#     http_response['benign'] = float(str(format(float(res[0]), "f"))[:5])
+#     http_response['malignant'] = float(str(format(float(res[1]), "f"))[:5])
+#     print(http_response)
+#     return JsonResponse(http_response)
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def simple_upload(request):
+    if request.method == 'POST' and request.FILES['myfile']:
+        
+        #File uploading
+        myfile = request.FILES['myfile']
+        fs = FileSystemStorage()
+        filename = fs.save("malignancyPrediction/static/"+myfile.name, myfile)
+        uploaded_file_url = "/static/"+myfile.name
+        request.session['file_name'] = myfile.name
+
+        #Prediction
+        abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resnet50.json')
+        h5_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resnet50.h5')
+        img_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'static/'+request.session['file_name'])
+
+        json_file = open(abs_path, 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        loaded_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        loaded_model.load_weights(h5_abs_path)
+        print("Loaded model from disk")
+        read = lambda imname: np.asarray(Image.open(imname).convert("RGB"))
+        ims_benign = [read(img_abs_path)]
+
+        X_benign = np.array(ims_benign, dtype='uint8')
+        X_benign=X_benign/255
+
+        #print(X_benign)
+        #print(loaded_model.predict_classes(X_benign))
+        #print(loaded_model.predict_classes(X_malignant))
+        print(loaded_model.predict(X_benign))
+        res = loaded_model.predict(X_benign)
+        res = res[0]
+        b_val = str(format(float(res[0]), "f"))[:5]
+        m_val = str(format(float(res[1]), "f"))[:5]
+        http_response = {}
+        http_response['benign'] = float(b_val)
+        http_response['malignant'] = float(m_val)
+        print(http_response)
+        request.session['b_val'] = b_val
+        request.session['m_val'] = m_val
+        file1 = open("myfile.txt","w") 
+        file1.write(b_val+","+m_val) 
+        file1.close()
+        return JsonResponse(http_response)
+        # return render(request, 'simple_upload.html', {
+        #     'uploaded_file_url': uploaded_file_url,
+        #     'result_url': '/detection/predict'
+        # })
+    return render(request, 'simple_upload.html')
+
+@csrf_exempt
+def get_result(request):
+    if request.method=="GET":
+        file1 = open("myfile.txt","r+")  
+        con_val = file1.read().split(",")
+        file1.close();
+        b_val = float(con_val[0])
+        m_val = float(con_val[1])
+        http_response = {}
+        http_response['benign'] = float(b_val)
+        http_response['malignant'] = float(m_val)
+        print('Get Result Response:')
+        print(http_response)
+        return JsonResponse(http_response)
 
 
-def index(request):
+@csrf_exempt
+def just_upload(request):
+    print('Request received')
+    print('Method: '+request.method)
+    if request.method == 'POST' and request.FILES['myfile']:
+        
+        #File uploading
+        myfile = request.FILES['myfile']
+        print(myfile)
+        fs = FileSystemStorage()
+        filename = fs.save("malignancyPrediction/static/"+myfile.name, myfile)
+        uploaded_file_url = "/static/"+myfile.name
+        request.session['file_name'] = myfile.name
+        return render(request, 'simple_upload.html', {
+            'uploaded_file_url': uploaded_file_url,
+            'result_url': '/detection/predict'
+        })
 
+    return render(request, 'simple_upload.html')
 
-    
-    abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resnet50.json')
-    h5_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resnet50.h5')
-    img_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'benign1.jpg')
-
-    json_file = open(abs_path, 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    loaded_model = model_from_json(loaded_model_json)
-    # load weights into new model
-    loaded_model.load_weights(h5_abs_path)
-    print("Loaded model from disk")
-    read = lambda imname: np.asarray(Image.open(imname).convert("RGB"))
-    ims_benign = [read(img_abs_path)]
-
-    X_benign = np.array(ims_benign, dtype='uint8')
-    X_benign=X_benign/255
- 
-
-    #print(X_benign)
-    #print(loaded_model.predict_classes(X_benign))
-    #print(loaded_model.predict_classes(X_malignant))
-    print(loaded_model.predict(X_benign))
-    return HttpResponse(loaded_model.predict(X_benign))

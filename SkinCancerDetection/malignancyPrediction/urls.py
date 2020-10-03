@@ -19,7 +19,8 @@ from . import views
 
 urlpatterns = [
     
-    path('predict', views.index, name='index'),
-
+    path('upload', views.simple_upload, name='upload'),
+    path('justupload', views.just_upload, name='just_upload'),
+    path('result', views.get_result, name='get_result'),
     
 ]
