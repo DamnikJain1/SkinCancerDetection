@@ -14,3 +14,12 @@ class Doctor(models.Model):
         return self.speciality
         return self.address
         return self.pincode
+
+# Create your models here.
+class Forum(models.Model):
+    sent_by = models.CharField(max_length=30)
+    message = models.CharField(max_length=1000)
+    
+    def __unicode__(self):
+        return self.sent_by
+        return self.message

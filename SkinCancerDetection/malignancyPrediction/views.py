@@ -89,8 +89,12 @@ def simple_upload(request):
         h5_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resnet50.h5')
         img_abs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'static/'+request.session['file_name'])
         ans = verify_skin(img_abs_path)
+        request.session['verify_skin'] = ans
+        print("Verify Skin: "+str(ans))
         if(ans==False):
-            return JsonResponse({"Not a skin image"})
+            file1 = open("myfile.txt","w")
+            file1.write("0,0,"+str(ans))
+            return JsonResponse({"res":"Not a skin image"})
         else:
             json_file = open(abs_path, 'r')
             loaded_model_json = json_file.read()
@@ -120,7 +124,7 @@ def simple_upload(request):
             request.session['b_val'] = b_val
             request.session['m_val'] = m_val
             file1 = open("myfile.txt","w")
-            file1.write(b_val+","+m_val)
+            file1.write(b_val+","+m_val+","+str(ans))
             file1.close()
             return JsonResponse(http_response)
             # return render(request, 'simple_upload.html', {
@@ -137,9 +141,11 @@ def get_result(request):
         file1.close();
         b_val = float(con_val[0])
         m_val = float(con_val[1])
+        ans = con_val[2]
         http_response = {}
         http_response['benign'] = float(b_val)
         http_response['malignant'] = float(m_val)
+        http_response['verify_skin'] = ans;
         print('Get Result Response:')
         print(http_response)
         return JsonResponse(http_response)
